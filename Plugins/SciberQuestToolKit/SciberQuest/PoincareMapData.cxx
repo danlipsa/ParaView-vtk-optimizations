@@ -302,15 +302,8 @@ int PoincareMapData::SyncGeometry()
   float *pMapPts=this->OutPts->WritePointer(3*nExPts,3*nNewPts);
 
   // resize cells
-  vtkIdTypeArray *mapCells=this->OutCells->GetData();
-  vtkIdType *pMapCells
-    = mapCells->WritePointer(
-          mapCells->GetNumberOfTuples(),
-          nNewCells+nNewPts);
-
-  this->OutCells->SetNumberOfCells(
-          this->OutCells->GetNumberOfCells()+nNewCells);
-
+  this->OutCells->ReserveAll(this->OutCells->GetNumberOfCells() + nNewCells,
+                             this->OutCells->GetNumberOfPoints() + nNewPts);
   // resize scalars
   vtkIdType nExIds=this->SourceId->GetNumberOfTuples();
   int *pId=this->SourceId->WritePointer(nExIds,nNewCells);
@@ -331,15 +324,12 @@ int PoincareMapData::SyncGeometry()
     *pId=(int)this->Lines[i]->GetSeedId();
     ++pId;
 
-    // build the poly verts
-    *pMapCells=nPts;
-    ++pMapCells;
-
+    // build the poly verts    
+    this->OutCells->InsertNextCell(nPts);
     for (int q=0; q<nPts; ++q)
       {
       // vert id
-      *pMapCells=ptId;
-      ++pMapCells;
+      this->OutCells->InsertCellPoint(ptId);
       ++ptId;
       }
     }

@@ -104,7 +104,7 @@ int vtkPolyLineToRectilinearGridFilter::RequestData(
   vtkIdType number_of_points=0;
   vtkIdType* points;
   vtkIdType cc;
-  lines->GetCell(0, number_of_points, points);
+  lines->GetCellFromId(0, number_of_points, points);
 
   output_data->SetDimensions(number_of_points, 1, 1);
 

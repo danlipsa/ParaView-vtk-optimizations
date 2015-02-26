@@ -162,12 +162,6 @@ vtkIdType PolyDataFieldTopologyMap::InsertCellsFromGenerator(IdBlock *SourceIds)
   vtkIdType startCellId=SourceIds->first();
   vtkIdType nCellsLocal=SourceIds->size();
 
-  // update the cell count before we forget (does not allocate).
-  this->OutCells->SetNumberOfCells(OutCells->GetNumberOfCells()+nCellsLocal);
-
-  vtkIdTypeArray *outCells=this->OutCells->GetData();
-  vtkIdType insertLoc=outCells->GetNumberOfTuples();
-
   vtkIdType nOutPts=this->OutPts->GetNumberOfTuples();
   vtkIdType polyId=startCellId;
 
@@ -189,13 +183,8 @@ vtkIdType PolyDataFieldTopologyMap::InsertCellsFromGenerator(IdBlock *SourceIds)
     this->SourceGen->GetCellPointIndexes(polyId,&sourcePtIds[0]);
     this->SourceGen->GetCellPoints(polyId,&sourcePts[0]);
 
-    // Get location to write new cell.
-    vtkIdType *pOutCells=outCells->WritePointer(insertLoc,nSourcePtIds+1);
-    // update next cell write location.
-    insertLoc+=nSourcePtIds+1;
     // number of points in this cell
-    *pOutCells=nSourcePtIds;
-    ++pOutCells;
+    this->OutCells->InsertNextCell(nSourcePtIds);
 
     // Get location to write new point. assumes we need to copy all
     // but this is wrong as there will be many duplicates. ignored.
@@ -203,7 +192,7 @@ vtkIdType PolyDataFieldTopologyMap::InsertCellsFromGenerator(IdBlock *SourceIds)
     // the seed point is the center of the cell
     float seed[3]={0.0f,0.0f,0.0f};
     // transfer from input to output (only what we own)
-    for (vtkIdType j=0; j<nSourcePtIds; ++j,++pOutCells)
+    for (vtkIdType j=0; j<nSourcePtIds; ++j)
       {
       vtkIdType idx=3*j;
       // do we already have this point?
@@ -219,14 +208,14 @@ vtkIdType PolyDataFieldTopologyMap::InsertCellsFromGenerator(IdBlock *SourceIds)
         pOutPts+=3;
 
         // insert the new point id.
-        *pOutCells=nOutPts;
+        this->OutCells->InsertCellPoint(nOutPts);
         ++nOutPts;
         }
       else
         {
         // this point has been coppied, do not add a duplicate.
         // insert the other point id.
-        *pOutCells=(*ret.first).second;
+        this->OutCells->InsertCellPoint((*ret.first).second);
         }
       // compute contribution to cell center.
       seed[0]+=sourcePts[idx  ];
@@ -267,13 +256,7 @@ vtkIdType PolyDataFieldTopologyMap::InsertCellsFromDataset(IdBlock *SourceIds)
     this->SourceCells->GetNextCell(n,ptIds);
     }
 
-  // update the cell count before we forget (does not allocate).
-  this->OutCells->SetNumberOfCells(OutCells->GetNumberOfCells()+nCellsLocal);
-
   float *pSourcePts=this->SourcePts->GetPointer(0);
-
-  vtkIdTypeArray *outCells=this->OutCells->GetData();
-  vtkIdType insertLoc=outCells->GetNumberOfTuples();
 
   vtkIdType nOutPts=this->OutPts->GetNumberOfTuples();
   vtkIdType polyId=startCellId;
@@ -291,13 +274,8 @@ vtkIdType PolyDataFieldTopologyMap::InsertCellsFromDataset(IdBlock *SourceIds)
     vtkIdType *ptIds=0;
     this->SourceCells->GetNextCell(nPtIds,ptIds);
 
-    // Get location to write new cell.
-    vtkIdType *pOutCells=outCells->WritePointer(insertLoc,nPtIds+1);
-    // update next cell write location.
-    insertLoc+=nPtIds+1;
     // number of points in this cell
-    *pOutCells=nPtIds;
-    ++pOutCells;
+    this->OutCells->InsertNextCell(nPtIds);
 
     // Get location to write new point. assumes we need to copy all
     // but this is wrong as there will be many duplicates. ignored.
@@ -305,7 +283,7 @@ vtkIdType PolyDataFieldTopologyMap::InsertCellsFromDataset(IdBlock *SourceIds)
     // the  point we will use the center of the cell
     float seed[3]={0.0f,0.0f,0.0f};
     // transfer from input to output (only what we own)
-    for (vtkIdType j=0; j<nPtIds; ++j,++pOutCells)
+    for (vtkIdType j=0; j<nPtIds; ++j)
       {
       vtkIdType idx=3*ptIds[j];
       // do we already have this point?
@@ -321,14 +299,14 @@ vtkIdType PolyDataFieldTopologyMap::InsertCellsFromDataset(IdBlock *SourceIds)
         pOutPts+=3;
 
         // insert the new point id.
-        *pOutCells=nOutPts;
+        this->OutCells->InsertCellPoint(nOutPts);
         ++nOutPts;
         }
       else
         {
         // this point has been coppied, do not add a duplicate.
         // insert the other point id.
-        *pOutCells=(*ret.first).second;
+        this->OutCells->InsertCellPoint((*ret.first).second);
         }
       // compute contribution to cell center.
       seed[0]+=pSourcePts[idx  ];

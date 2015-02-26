@@ -54,11 +54,9 @@ void UnstructuredGridCellCopier::ClearOutput()
   if (this->OutPts){ this->OutPts->Delete(); }
   if (this->OutCells){ this->OutCells->Delete(); }
   if (this->OutTypes){ this->OutTypes->Delete(); }
-  if (this->OutLocs){ this->OutLocs->Delete(); }
   this->OutPts=0;
   this->OutCells=0;
   this->OutTypes=0;
-  this->OutLocs=0;
 }
 
 //-----------------------------------------------------------------------------
@@ -116,9 +114,8 @@ void UnstructuredGridCellCopier::Initialize(vtkDataSet *s, vtkDataSet *o)
 
   this->OutCells=vtkCellArray::New();
   this->OutTypes=vtkUnsignedCharArray::New();
-  this->OutLocs=vtkIdTypeArray::New();
 
-  out->SetCells(this->OutTypes,this->OutLocs,this->OutCells);
+  out->SetCells(this->OutTypes,this->OutCells);
 }
 
 //-----------------------------------------------------------------------------
@@ -151,19 +148,9 @@ vtkIdType UnstructuredGridCellCopier::Copy(IdBlock &SourceIds)
   // output points
   vtkIdType nOutPts=this->OutPts->GetNumberOfTuples();
 
-  // output cells
-  vtkIdTypeArray *outCells=this->OutCells->GetData();
-  vtkIdType nCellIds=outCells->GetNumberOfTuples();
-  vtkIdType nOutCells=this->OutCells->GetNumberOfCells();
-  this->OutCells->SetNumberOfCells(nOutCells+nCellsLocal);
-
   // output cell types
   vtkIdType endOfTypes=this->OutTypes->GetNumberOfTuples();
   unsigned char *pOutTypes=this->OutTypes->WritePointer(endOfTypes,nCellsLocal);
-
-  // output cell locations
-  vtkIdType endOfLocs=this->OutLocs->GetNumberOfTuples();
-  vtkIdType *pOutLocs=this->OutLocs->WritePointer(endOfLocs,nCellsLocal);
 
   // For each cell asigned
   for (vtkIdType i=0; i<nCellsLocal; ++i)
@@ -173,24 +160,13 @@ vtkIdType UnstructuredGridCellCopier::Copy(IdBlock &SourceIds)
     vtkIdType *ptIds=0;
     this->SourceCells->GetNextCell(nPtIds,ptIds);
 
-    // set the new cell's location
-    *pOutLocs=nCellIds;
-    ++pOutLocs;
-
     // copy its type.
     *pOutTypes=*pSourceTypes;
     ++pOutTypes;
     ++pSourceTypes;
 
-    // Get location to write new cell.
-    vtkIdType *pOutCells=outCells->WritePointer(nCellIds,nPtIds+1);
-
-    // update next cell write location.
-    nCellIds+=nPtIds+1;
-
     // number of points in this cell
-    *pOutCells=nPtIds;
-    ++pOutCells;
+    this->OutCells->InsertNextCell(nPtIds);
 
     // Get location to write new point. assumes we need to copy all
     // but this is wrong as there will be many duplicates. ignored.
@@ -215,8 +191,7 @@ vtkIdType UnstructuredGridCellCopier::Copy(IdBlock &SourceIds)
         this->CopyPointData(ptIds[j]);
         }
       // insert the point id into the new cell.
-      *pOutCells=outId;
-      ++pOutCells;
+      this->OutCells->InsertCellPoint(outId);
       }
     }
 

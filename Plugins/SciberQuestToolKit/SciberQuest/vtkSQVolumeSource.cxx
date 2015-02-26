@@ -265,7 +265,7 @@ int vtkSQVolumeSource::RequestData(
 
   // cells
   vtkCellArray *cells=vtkCellArray::New();
-  vtkIdType *pCells=cells->WritePointer(nLocal,9*nLocal);
+  cells->Reserve(nLocal, 8);
 
   // cell types
   vtkUnsignedCharArray *types=vtkUnsignedCharArray::New();
@@ -300,8 +300,7 @@ int vtkSQVolumeSource::RequestData(
     float cpts[24];
     source->GetCellPoints(cid,cpts);
 
-    pCells[0]=8; // set number of verts for this cell
-    ++pCells;
+    cells->InsertNextCell(8);
 
     for (int i=0; i<8; ++i)
       {
@@ -319,8 +318,7 @@ int vtkSQVolumeSource::RequestData(
         ++ptId;
         }
       // convert the index to a local pt id, and add to the cell.
-      *pCells=(*ins.first).second;
-      ++pCells;
+      cells->InsertCellPoint((*ins.first).second);
       }
 
     // cell location
@@ -337,7 +335,7 @@ int vtkSQVolumeSource::RequestData(
   X->Resize(ptId);
 
   // transfer
-  output->SetCells(types,locs,cells);
+  output->SetCells(types,cells);
 
   types->Delete();
   locs->Delete();

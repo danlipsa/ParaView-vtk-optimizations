@@ -180,13 +180,7 @@ vtkIdType PolyDataCellCopier::Copy(IdBlock &SourceIds)
     this->SourceCells->GetNextCell(n,ptIds);
     }
 
-  // update the cell count before we forget (does not allocate).
-  this->OutCells->SetNumberOfCells(OutCells->GetNumberOfCells()+nCellsLocal);
-
   float *pSourcePts=this->SourcePts->GetPointer(0);
-
-  vtkIdTypeArray *outCells=this->OutCells->GetData();
-  vtkIdType insertLoc=outCells->GetNumberOfTuples();
 
   vtkIdType nOutPts=this->OutPts->GetNumberOfTuples();
 
@@ -200,13 +194,8 @@ vtkIdType PolyDataCellCopier::Copy(IdBlock &SourceIds)
     vtkIdType *ptIds=0;
     this->SourceCells->GetNextCell(nPtIds,ptIds);
 
-    // Get location to write new cell.
-    vtkIdType *pOutCells=outCells->WritePointer(insertLoc,nPtIds+1);
-    // update next cell write location.
-    insertLoc+=nPtIds+1;
     // number of points in this cell
-    *pOutCells=nPtIds;
-    ++pOutCells;
+    this->OutCells->InsertNextCell(nPtIds);
 
     // Get location to write new point. assumes we need to copy all
     // but this is wrong as there will be many duplicates. ignored.
@@ -230,8 +219,7 @@ vtkIdType PolyDataCellCopier::Copy(IdBlock &SourceIds)
         this->CopyPointData(ptIds[j]);
         }
       // insert the point id into the new cell.
-      *pOutCells=outId;
-      ++pOutCells;
+      this->OutCells->InsertCellPoint(outId);
       }
     }
   // correct the length of the point array, above we assumed

@@ -104,7 +104,7 @@ void vtkCellPointsFilter::ExecuteSimple(vtkDataSet *input, vtkPolyData *output)
   out_PD->PassData(in_PD);
   //
   verts = vtkCellArray::New();
-  verts->Allocate(npoints * 2);
+  verts->Allocate(npoints * 2, npoints*2);
   //vtkIdType *ptr = verts->GetPointer();
   //
   for (vtkIdType i = 0; i < npoints; i++)

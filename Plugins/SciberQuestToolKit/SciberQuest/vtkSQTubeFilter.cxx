@@ -159,7 +159,7 @@ int vtkSQTubeFilter::RequestData(
   newNormals->SetNumberOfComponents(3);
   newNormals->Allocate(3*numNewPts);
   newStrips = vtkCellArray::New();
-  newStrips->Allocate(newStrips->EstimateSize(1,(int)numNewPts));
+  newStrips->Reserve(1,(int)numNewPts);
   vtkCellArray *singlePolyline = vtkCellArray::New();
 
   // Point data: copy scalars, vectors, tcoords. Normals may be computed here.

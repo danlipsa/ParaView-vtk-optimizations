@@ -368,7 +368,7 @@ void vtkPVGeometryFilter::ExecuteAMRBlockOutline(
   points->Allocate(8);
 
   vtkNew<vtkCellArray> lines;
-  lines->Allocate(lines->EstimateSize(12, 2));
+  lines->Allocate(12, 2);
 
   double x[3];
   x[0] = bounds[0]; x[1] = bounds[2]; x[2] = bounds[4];
@@ -1054,8 +1054,6 @@ void vtkPVGeometryFilter::ExecuteCellNormals(vtkPolyData* output, int doCommunic
     return;
     }
 
-  vtkIdType* endCellPtr;
-  vtkIdType* cellPtr;
   vtkIdType *pts = 0;
   vtkIdType npts = 0;
   double polyNorm[3];
@@ -1067,17 +1065,10 @@ void vtkPVGeometryFilter::ExecuteCellNormals(vtkPolyData* output, int doCommunic
   aPrim = output->GetPolys();
   if (aPrim && aPrim->GetNumberOfCells())
     {
-    vtkPoints* p = output->GetPoints();
-
-    cellPtr = aPrim->GetPointer();
-    endCellPtr = cellPtr+aPrim->GetNumberOfConnectivityEntries();
-
-    while (cellPtr < endCellPtr)
+    vtkPoints* p = output->GetPoints();    
+    for(int i = 0; i < aPrim->GetNumberOfCells(); ++i)
       {
-      npts = *cellPtr++;
-      pts = cellPtr;
-      cellPtr += npts;
-
+      aPrim->GetCellFromId(i, npts, pts);
       vtkPolygon::ComputeNormal(p,npts,pts,polyNorm);
       cellNormals->InsertNextTuple(polyNorm);
       }

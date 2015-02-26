@@ -18,6 +18,8 @@
 ----------------------------------------------------------------------------*/
 #include "vtkRedistributePolyData.h"
 
+#include <memory>
+
 #include "vtkCellArray.h"
 #include "vtkCellData.h"
 #include "vtkCharArray.h"
@@ -42,6 +44,7 @@
 #include "vtkUnsignedShortArray.h"
 #include "vtkSmartPointer.h"
 #include "vtkMultiProcessController.h"
+
 
 vtkStandardNewMacro(vtkRedistributePolyData);
 
@@ -401,16 +404,14 @@ int vtkRedistributePolyData::RequestData(vtkInformation* vtkNotUsed(request),
   outputCellArrays[2] = outputPolys.GetPointer();
   outputCellArrays[3] = outputStrips.GetPointer(); 
 
-  vtkIdType* ptr = 0; 
   for (type=0; type<NUM_CELL_TYPES; type ++)
     {
     if (totalNumCellPts[type] >0)
       {
       if (outputCellArrays[type])
         {
-        ptr = outputCellArrays[type]->
-          WritePointer(totalNumCells[type],totalNumCellPts[type]);
-        if (ptr == 0) 
+        if (! outputCellArrays[type]->
+            Allocate(totalNumCells[type],totalNumCellPts[type]))
           {
           vtkErrorMacro("Error: can't allocate points.");
           }
@@ -1257,14 +1258,9 @@ void vtkRedistributePolyData::CopyCells (vtkIdType* numCells,
   vtkIdType pointId; 
   vtkIdType npts;
 
-  vtkIdType* inPtr;
-  vtkIdType* ptr;
-  
+  vtkIdType* inPtr;  
   for (type=0; type<NUM_CELL_TYPES; type++)
     {
-    inPtr = inputCellArrays[type]->GetPointer();
-    ptr = outputCellArrays[type]->GetPointer();
-
     // ... set output number of points to input number of points ...
     if (keepCellList == NULL)
       {
@@ -1272,15 +1268,15 @@ void vtkRedistributePolyData::CopyCells (vtkIdType* numCells,
         {
         // ... set output number of points to input number 
         //   of points ...
-        npts=*inPtr++;
-        *ptr++ = npts;
+        inputCellArrays[type]->GetCellFromId(cellId, npts, inPtr);
+        outputCellArrays[type]->InsertNextCell(npts);
         for (i = 0; i < npts; i++)
           {
           pointId = *inPtr++;
           if (usedIds[pointId] == -1)
             {
             vtkIdType newPt = pointIncr;
-            *ptr++ = newPt;
+            outputCellArrays[type]->InsertCellPoint(newPt);
             usedIds[pointId] = newPt;
             fromPtIds[pointIncr] = pointId;
             pointIncr++;
@@ -1288,33 +1284,25 @@ void vtkRedistributePolyData::CopyCells (vtkIdType* numCells,
           else
             {
             // ... use new point id ...
-            *ptr++ = usedIds[pointId];
+            outputCellArrays[type]->InsertCellPoint(usedIds[pointId]);
             }
           } // end loop over npts
         } // end loop over numCells
       } // end if section where keepCellList is null
     else
       {
-      vtkIdType prevCellId = 0;
       for (vtkIdType id = 0; id < numCells[type]; id++)
         {
         cellId = keepCellList[type][id];
-        for (i=prevCellId; i<cellId; i++)
-          {
-          npts=*inPtr++;
-          inPtr += npts;
-          }
-        prevCellId = cellId+1;
-  
-        npts=*inPtr++;
-        *ptr++ = npts;
+        inputCellArrays[type]->GetCellFromId(cellId, npts, inPtr);
+        outputCellArrays[type]->InsertNextCell(npts);
         for (i = 0; i < npts; i++)
           {
           pointId = *inPtr++;
           if (usedIds[pointId] == -1)
             {
             vtkIdType newPt = pointIncr;
-            *ptr++ = newPt;
+            outputCellArrays[type]->InsertCellPoint(newPt);
             usedIds[pointId] = newPt;
             fromPtIds[pointIncr] = pointId;
             pointIncr++;
@@ -1322,7 +1310,7 @@ void vtkRedistributePolyData::CopyCells (vtkIdType* numCells,
           else
             {
             // ... use new point id ...
-            *ptr++ = usedIds[pointId];
+            outputCellArrays[type]->InsertCellPoint(usedIds[pointId]);
             }
           } // end loop over npts
         } // end loop over cells
@@ -1436,7 +1424,6 @@ void vtkRedistributePolyData::SendCellSizes
     {
     if (cellArrays[type])
       {
-      inPtr = cellArrays[type]->GetPointer();
       ptcntr[type] = 0; // counts the number of points stored in the
       // cell array plus includes the extra space 
       // for each cell that contains the number of 
@@ -1445,20 +1432,12 @@ void vtkRedistributePolyData::SendCellSizes
       if (sendCellList == NULL)
         {
         // ... send cells in a block ...
-        for (cellId = 0; cellId < startCell[type]; cellId++)
-          {
-          // ... increment pointers to get to correct starting 
-          //  point ...
-          npts=*inPtr++;
-          inPtr+=npts;
-          }
-   
         for (cellId = startCell[type]; cellId <= stopCell[type]; 
              cellId++)
           {
           // ... set output number of points to input number of 
           //   points ...
-          npts=*inPtr++;
+          cellArrays[type]->GetCellFromId(cellId, npts, inPtr);
           ptcntr[type]++;
           for (i = 0; i < npts; i++)
             {
@@ -1475,26 +1454,17 @@ void vtkRedistributePolyData::SendCellSizes
         {
         // ... there is a specific list of cells to send ...
 
-        vtkIdType prevCellId = 0;
         numCells = stopCell[type]-startCell[type]+1;
  
         for (vtkIdType id = 0; id < numCells; id++)
           {
        
           cellId = sendCellList[type][id];
-          for (i = prevCellId; i<cellId ; i++)
-            {
-            // ... increment pointers to get to correct starting 
-            // point ...
-            npts=*inPtr++;
-            inPtr+=npts;
-            }
-          prevCellId = cellId+1;
 
           // ... set output number of points to input number of 
           //   points ...
 
-          npts=*inPtr++;
+          cellArrays[type]->GetCellFromId(cellId, npts, inPtr);
           ptcntr[type]++;
 
           for (i = 0; i < npts; i++)
@@ -1570,7 +1540,6 @@ void vtkRedistributePolyData::SendCells
   vtkIdType numCells[NUM_CELL_TYPES];
   for (type=0; type<NUM_CELL_TYPES; type++)
     {
-    inPtr = inputCellArrays[type]->GetPointer();
     ptr = new vtkIdType[cellArraySize[type]];
     ptrsav[type] = ptr;
     ptcntr[type] = 0;
@@ -1578,19 +1547,12 @@ void vtkRedistributePolyData::SendCells
 
     // ... set output number of points to input number of points ...
     if (sendCellList == NULL)
-      {
+      {      
       // ... send cells in a block ...
-      for (cellId = 0; cellId < startCell[type]; cellId++)
-        {
-        // ... increment pointers to get to correct starting point ...
-        npts=*inPtr++;
-        inPtr+=npts;
-        }
-
       for (cellId = startCell[type]; cellId <= stopCell[type]; 
            cellId++)
         {
-        npts=*inPtr++;
+        inputCellArrays[type]->GetCellFromId(cellId, npts, inPtr);
         *ptr++ = npts;
         ptcntr[type]++;
         for (i = 0; i < npts; i++)
@@ -1805,10 +1767,12 @@ void vtkRedistributePolyData::ReceiveCells
   outputCellArrays[1] = output->GetLines();
   outputCellArrays[2] = output->GetPolys();
   outputCellArrays[3] = output->GetStrips();
+  std::auto_ptr<vtkIdType> cellBuffer[NUM_CELL_TYPES];
 
   int type;
   for (type=0; type<NUM_CELL_TYPES; type++)
     {
+    cellBuffer[type].reset(new vtkIdType[cellptCntr[type]]);
     vtkIdType cnt = 0;
     vtkIdType numCells = stopCell[type]-startCell[type]+1;
     vtkIdType* toIds = new vtkIdType[numCells];
@@ -1839,13 +1803,12 @@ void vtkRedistributePolyData::ReceiveCells
     {
     if (outputCellArrays[type])
       {
-      outPtr = outputCellArrays[type]->GetPointer(); 
-      outPtr+= prevCellptCntr[type];
+      outPtr = cellBuffer[type].get();
 
       if (cellptCntr[type] && outPtr)
         {
-        this->Controller->Receive((vtkIdType*)outPtr, 
-                                  cellptCntr[type], 
+        this->Controller->Receive(outPtr,
+                                  cellptCntr[type],
                                   recFrom, CELL_TAG+type);
         }
 
@@ -1856,9 +1819,10 @@ void vtkRedistributePolyData::ReceiveCells
            cellId++) 
         {
         vtkIdType npts=*outPtr++;
+        outputCellArrays[type]->InsertNextCell(npts);
         for (i = 0; i < npts; i++)
           {
-          *outPtr+=prevNumPoints;
+          outputCellArrays[type]->InsertCellPoint(*outPtr + prevNumPoints);
           outPtr++;
           }
         }
@@ -2100,11 +2064,11 @@ void vtkRedistributePolyData::FindMemReq
     {
     if (cellArrays[type])
       {
-      inPtr = cellArrays[type]->GetPointer();
       numCellPts[type] = 0;
       for (cellId = 0; cellId < origNumCells[type]; cellId++)
         {
-        vtkIdType npts=*inPtr++;
+        vtkIdType npts=0;
+        cellArrays[type]->GetCellFromId(cellId, npts, inPtr);
         numCellPts[type]++;
         numCellPts[type]+=npts;
         for (i = 0; i < npts; i++)

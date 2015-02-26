@@ -9406,10 +9406,8 @@ void vtkMaterialInterfaceFilter::CopyAttributesToOutput1()
   #endif
   ReleaseVtkPointer(ia);
   // Compute the fragment centers and build vertices.
-  vtkIdTypeArray *va=vtkIdTypeArray::New();
-  va->SetNumberOfTuples(2*this->NumberOfResolvedFragments);
-  vtkIdType *verts
-    = va->GetPointer(0);
+  vtkCellArray *cells=vtkCellArray::New();
+  cells->Allocate(this->NumberOfResolvedFragments, 1);
   vtkPoints *pts=vtkPoints::New();
   // use center of mass if available
   if (this->ComputeMoments)
@@ -9423,9 +9421,8 @@ void vtkMaterialInterfaceFilter::CopyAttributesToOutput1()
       = this->FragmentMoments->GetPointer(0);
     for (int i=0; i<this->NumberOfResolvedFragments; ++i)
       {
-      verts[0]=1;
-      verts[1]=i;
-      verts+=2;
+      cells->InsertNextCell(1);
+      cells->InsertCellPoint(i);
 
       for (int q=0; q<3; ++q)
         {
@@ -9441,18 +9438,14 @@ void vtkMaterialInterfaceFilter::CopyAttributesToOutput1()
     pts->SetData(this->FragmentAABBCenters);
     for (int i=0; i<this->NumberOfResolvedFragments; ++i)
       {
-      verts[0]=1;
-      verts[1]=i;
-      verts+=2;
+      cells->InsertNextCell(1);
+      cells->InsertCellPoint(i);
       }
     }
   resolvedFragmentCenters->SetPoints(pts);
   pts->Delete();
-  vtkCellArray *cells=vtkCellArray::New();
-  cells->SetCells(static_cast<vtkIdType>(this->NumberOfResolvedFragments),va);
   resolvedFragmentCenters->SetVerts(cells);
   cells->Delete();
-  va->Delete();
 }
 
 //----------------------------------------------------------------------------

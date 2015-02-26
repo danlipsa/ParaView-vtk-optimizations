@@ -1281,24 +1281,19 @@ int vtkIntersectFragments::CopyAttributesToStatsOutput(
     const vtkIdType nCenters
       = this->IntersectionCenters[blockId]->GetNumberOfTuples();
     // add points and vertices.
-    vtkIdTypeArray *va=vtkIdTypeArray::New();
-    va->SetNumberOfTuples(2*nCenters);
-    vtkIdType *verts=va->GetPointer(0);
+    vtkCellArray *cells=vtkCellArray::New();
+    cells->Allocate(nCenters, 1);
     vtkPoints *pts=vtkPoints::New();
     pts->SetData(this->IntersectionCenters[blockId]);
     for (int i=0; i<nCenters; ++i)
       {
-      verts[0]=1;
-      verts[1]=i;
-      verts+=2;
+      cells->InsertNextCell(1);
+      cells->InsertCellPoint(i);
       }
     statsPd->SetPoints(pts);
     pts->Delete();
-    vtkCellArray *cells=vtkCellArray::New();
-    cells->SetCells(nCenters,va);
     statsPd->SetVerts(cells);
     cells->Delete();
-    va->Delete();
     // copy attributes, the output already has had
     // the structure coppied, including names and
     // number of comps.

@@ -47,11 +47,9 @@ void UnstructuredFieldDisplacementMap::ClearOut()
   if (this->OutPts){ this->OutPts->Delete(); }
   if (this->OutCells){ this->OutCells->Delete(); }
   if (this->OutTypes){ this->OutTypes->Delete(); }
-  if (this->OutLocs){ this->OutLocs->Delete(); }
   this->OutPts=0;
   this->OutCells=0;
   this->OutTypes=0;
-  this->OutLocs=0;
   this->IdMap.clear();
 }
 
@@ -114,9 +112,8 @@ void UnstructuredFieldDisplacementMap::SetOutput(vtkDataSet *o)
 
   this->OutCells=vtkCellArray::New();
   this->OutTypes=vtkUnsignedCharArray::New();
-  this->OutLocs=vtkIdTypeArray::New();
 
-  out->SetCells(this->OutTypes,this->OutLocs,this->OutCells);
+  out->SetCells(this->OutTypes,this->OutCells);
 }
 
 //-----------------------------------------------------------------------------
@@ -143,18 +140,11 @@ vtkIdType UnstructuredFieldDisplacementMap::InsertCellsFromGenerator(IdBlock *So
   vtkIdType nOutPts=this->OutPts->GetNumberOfTuples();
 
   // output cells
-  vtkIdTypeArray *outCells=this->OutCells->GetData();
-  vtkIdType nCellIds=outCells->GetNumberOfTuples();
   vtkIdType nOutCells=this->OutCells->GetNumberOfCells();
-  this->OutCells->SetNumberOfCells(nOutCells+nCellsLocal);
 
   // output cell types
   vtkIdType endOfTypes=this->OutTypes->GetNumberOfTuples();
   unsigned char *pOutTypes=this->OutTypes->WritePointer(endOfTypes,nCellsLocal);
-
-  // output cell locations
-  vtkIdType endOfLocs=this->OutLocs->GetNumberOfTuples();
-  vtkIdType *pOutLocs=this->OutLocs->WritePointer(endOfLocs,nCellsLocal);
 
   std::vector<float> sourcePts;
   std::vector<vtkIdType> sourceIds;
@@ -175,23 +165,12 @@ vtkIdType UnstructuredFieldDisplacementMap::InsertCellsFromGenerator(IdBlock *So
     this->SourceGen->GetCellPointIndexes(sourceCellId,&sourceIds[0]);
     this->SourceGen->GetCellPoints(sourceCellId,&sourcePts[0]);
 
-    // set the new cell's location
-    *pOutLocs=nCellIds;
-    ++pOutLocs;
-
     // copy its type.
     *pOutTypes=(unsigned char)this->SourceGen->GetCellType(sourceCellId);
     ++pOutTypes;
 
-    // Get location to write new cell.
-    vtkIdType *pOutCells=outCells->WritePointer(nCellIds,nPtIds+1);
-
-    // update next cell write location.
-    nCellIds+=nPtIds+1;
-
     // number of points in this cell
-    *pOutCells=nPtIds;
-    ++pOutCells;
+    this->OutCells->InsertNextCell(nPtIds);
 
     // Get location to write new point. assumes we need to copy all
     // but this is wrong as there will be many duplicates. ignored.
@@ -221,8 +200,7 @@ vtkIdType UnstructuredFieldDisplacementMap::InsertCellsFromGenerator(IdBlock *So
         }
 
       // insert the point id.
-      *pOutCells=(*ret.first).second;
-      ++pOutCells;
+      this->OutCells->InsertCellPoint((*ret.first).second);
       }
 
     ++sourceCellId;
@@ -259,19 +237,10 @@ vtkIdType UnstructuredFieldDisplacementMap::InsertCellsFromDataset(IdBlock *Sour
   // output points
   vtkIdType nOutPts=this->OutPts->GetNumberOfTuples();
 
-  // output cells
-  vtkIdTypeArray *outCells=this->OutCells->GetData();
-  vtkIdType nCellIds=outCells->GetNumberOfTuples();
-  vtkIdType nOutCells=this->OutCells->GetNumberOfCells();
-  this->OutCells->SetNumberOfCells(nOutCells+nCellsLocal);
 
   // output cell types
   vtkIdType endOfTypes=this->OutTypes->GetNumberOfTuples();
   unsigned char *pOutTypes=this->OutTypes->WritePointer(endOfTypes,nCellsLocal);
-
-  // output cell locations
-  vtkIdType endOfLocs=this->OutLocs->GetNumberOfTuples();
-  vtkIdType *pOutLocs=this->OutLocs->WritePointer(endOfLocs,nCellsLocal);
 
   vtkIdType sourceCellId=startCellId;
 
@@ -286,23 +255,12 @@ vtkIdType UnstructuredFieldDisplacementMap::InsertCellsFromDataset(IdBlock *Sour
     vtkIdType *ptIds=0;
     this->SourceCells->GetNextCell(nPtIds,ptIds);
 
-    // set the new cell's location
-    *pOutLocs=nCellIds;
-    ++pOutLocs;
-
     // copy its type.
     *pOutTypes=pSourceTypes[sourceCellId];
     ++pOutTypes;
 
-    // Get location to write new cell.
-    vtkIdType *pOutCells=outCells->WritePointer(nCellIds,nPtIds+1);
-
-    // update next cell write location.
-    nCellIds+=nPtIds+1;
-
     // number of points in this cell
-    *pOutCells=nPtIds;
-    ++pOutCells;
+    this->OutCells->InsertNextCell(nPtIds);
 
     // Get location to write new point. assumes we need to copy all
     // but this is wrong as there will be many duplicates. ignored.
@@ -324,7 +282,7 @@ vtkIdType UnstructuredFieldDisplacementMap::InsertCellsFromDataset(IdBlock *Sour
         pOutPts[2]=pSourcePts[idx+2];
 
         // insert the new point id.
-        *pOutCells=nOutPts;
+        this->OutCells->InsertCellPoint(nOutPts);
 
         FieldLine *line=new FieldLine(pOutPts,nOutPts);
         line->AllocateTrace();
@@ -337,10 +295,8 @@ vtkIdType UnstructuredFieldDisplacementMap::InsertCellsFromDataset(IdBlock *Sour
         {
         // this point has been coppied, do not add a duplicate.
         // insert the other point id.
-        *pOutCells=(*ret.first).second;
+        this->OutCells->InsertCellPoint((*ret.first).second);
         }
-
-      ++pOutCells;
       }
 
     ++sourceCellId;

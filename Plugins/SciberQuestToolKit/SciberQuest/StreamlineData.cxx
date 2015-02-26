@@ -233,12 +233,8 @@ int StreamlineData::SyncGeometry()
   vtkIdType nLinePts=this->OutPts->GetNumberOfTuples();
   float *pLinePts=this->OutPts->WritePointer(3*nLinePts,3*nNewPtsTotal);
 
-  vtkIdTypeArray *lineCells=this->OutCells->GetData();
-  vtkIdType *pLineCells
-    = lineCells->WritePointer(lineCells->GetNumberOfTuples(),nNewPtsTotal+nLines);
-
-  // resize cells
-  this->OutCells->SetNumberOfCells(this->OutCells->GetNumberOfCells()+nLines);
+  this->OutCells->ReserveAll(this->OutCells->GetNumberOfCells() + nLines,
+                             this->OutCells->GetNumberOfPoints() + nNewPtsTotal);
 
   // resize scalars
   vtkIdType nExIds=this->SourceId->GetNumberOfTuples();
@@ -274,12 +270,10 @@ int StreamlineData::SyncGeometry()
     pLinePts+=3*nNewPts;
 
     // build the cell
-    *pLineCells=nNewPts;
-    ++pLineCells;
+    this->OutCells->InsertNextCell(nNewPts);
     for (vtkIdType q=0; q<nNewPts; ++q)
       {
-      *pLineCells=ptId;
-      ++pLineCells;
+      this->OutCells->InsertCellPoint(ptId);
       ++ptId;
       }
     }
@@ -291,7 +285,6 @@ int StreamlineData::SyncGeometry()
 void StreamlineData::CullPeriodicTransitions(double *bounds)
 {
   float *pPts=this->OutPts->GetPointer(0);
-  vtkIdType *pCells=this->OutCells->GetData()->GetPointer(0);
   vtkIdType nCells=this->OutCells->GetNumberOfCells();
   int *pCellIds=this->SourceId->GetPointer(0);
   float *pLen=this->Length->GetPointer(0);
@@ -313,10 +306,10 @@ void StreamlineData::CullPeriodicTransitions(double *bounds)
   // traverse cells
   for (vtkIdType q=0; q<nCells; ++q)
     {
-    vtkIdType nPts=*pCells;
-    ++pCells;
-
-    vtkIdType pid0=*pCells;
+    vtkIdType *pts=NULL;
+    vtkIdType nPts=0;
+    this->OutCells->GetCellFromId(q, nPts, pts);
+    vtkIdType pid0=pts[0];
 
     // start a new cell, always add the first point
     // under the assumption the first segment will
@@ -329,7 +322,7 @@ void StreamlineData::CullPeriodicTransitions(double *bounds)
     // traverse cell pts
     for (vtkIdType i=1; i<nPts; ++i)
       {
-      vtkIdType pid1=pCells[i];
+      vtkIdType pid1=pts[i];
 
       // compute segment length
       float *x0 = pPts+3*pid0;
@@ -432,15 +425,13 @@ void StreamlineData::CullPeriodicTransitions(double *bounds)
       }
 
     // increment cell and cell data pointers
-    pCells+=1;
     pLen+=1;
     pCellIds+=1;
     pColor+=1;
     }
 
   // update output
-  this->OutCells->GetData()->DeepCopy(newCells);
-  this->OutCells->SetNumberOfCells(nNewCells);
+  this->OutCells->CopyFromCountPointsFormat(nNewCells, newCells->GetPointer(0));
   newCells->Delete();
 
   this->Length->DeepCopy(newLen);

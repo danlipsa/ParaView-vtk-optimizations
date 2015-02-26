@@ -127,9 +127,8 @@ int vtkSQLineSource::RequestData(
 
   int nPtsLocal=nLocal+1;
 
-  vtkIdTypeArray *ca=vtkIdTypeArray::New();
-  ca->SetNumberOfTuples(3*nLocal);
-  vtkIdType *pca=ca->GetPointer(0);
+  vtkCellArray *cells=vtkCellArray::New();
+  cells->Reserve(nLocal, 2);
 
   vtkFloatArray *pa=vtkFloatArray::New();
   pa->SetNumberOfComponents(3);
@@ -149,15 +148,10 @@ int vtkSQLineSource::RequestData(
     ppa[2]=r0[2]+segEnd*v[2];
     ppa+=3;
 
-    pca[0]=2;
-    pca[1]=i;
-    pca[2]=i+1;
-    pca+=3;
+    cells->InsertNextCell(2);
+    cells->InsertCellPoint(i);
+    cells->InsertCellPoint(i+1);
     }
-
-  vtkCellArray *cells=vtkCellArray::New();
-  cells->SetCells(nLocal,ca);
-  ca->Delete();
   output->SetLines(cells);
   cells->Delete();
 

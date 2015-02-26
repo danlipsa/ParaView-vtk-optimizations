@@ -405,15 +405,8 @@ int vtkSQPlaneSource::RequestData(
   output->SetPoints(pts);
   pts->Delete();
 
-  vtkIdTypeArray *ia=vtkIdTypeArray::New();
-  ia->SetNumberOfComponents(1);
-  ia->SetNumberOfTuples(5*nLocal);
-  vtkIdType *pIa=ia->GetPointer(0);
-
   vtkCellArray *polys=vtkCellArray::New();
-  polys->SetCells(nLocal,ia);
-  ia->Delete();
-
+  polys->Reserve(nLocal, 4);
   output->SetPolys(polys);
   polys->Delete();
 
@@ -445,9 +438,7 @@ int vtkSQPlaneSource::RequestData(
     float ctpts[8];
     source->GetCellTextureCoordinates(cid,ctpts);
 
-    pIa[0]=4; // set number of verts for this cell
-    pIa+=1;
-
+    polys->InsertNextCell(4);
     for (int i=0; i<4; ++i)
       {
       // Attempt an insert of the new point's index
@@ -471,8 +462,7 @@ int vtkSQPlaneSource::RequestData(
         }
 
       // convert the index to a local pt id, and add to the cell.
-      pIa[0]=idMapInsert.first->second;
-      pIa+=1;
+      polys->InsertCellPoint(idMapInsert.first->second);
       }
     }
   source->Delete();

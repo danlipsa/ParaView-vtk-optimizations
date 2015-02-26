@@ -151,14 +151,8 @@ int vtkSQRandomSeedPoints::RequestData(
   output->SetPoints(pts);
   pts->Delete();
 
-  vtkIdTypeArray *ia=vtkIdTypeArray::New();
-  ia->SetNumberOfComponents(1);
-  ia->SetNumberOfTuples(2*nLocal);
-  vtkIdType *pIa=ia->GetPointer(0);
-
   vtkCellArray *verts=vtkCellArray::New();
-  verts->SetCells(nLocal,ia);
-  ia->Delete();
+  verts->Reserve(nLocal, 1);
 
   output->SetVerts(verts);
   verts->Delete();
@@ -207,9 +201,8 @@ int vtkSQRandomSeedPoints::RequestData(
     pX+=3;
 
     // insert the cell
-    pIa[0]=1;
-    pIa[1]=q;
-    pIa+=2;
+    verts->InsertNextCell(1);
+    verts->InsertCellPoint(q);
     }
 
   return 1;

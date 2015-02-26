@@ -162,12 +162,6 @@ vtkIdType PolyDataFieldDisplacementMap::InsertCellsFromGenerator(IdBlock *Source
   vtkIdType startCellId=SourceIds->first();
   vtkIdType nCellsLocal=SourceIds->size();
 
-  // update the cell count before we forget (does not allocate).
-  this->OutCells->SetNumberOfCells(OutCells->GetNumberOfCells()+nCellsLocal);
-
-  vtkIdTypeArray *outCells=this->OutCells->GetData();
-  vtkIdType insertLoc=outCells->GetNumberOfTuples();
-
   vtkIdType nOutPts=this->OutPts->GetNumberOfTuples();
   vtkIdType polyId=startCellId;
 
@@ -186,20 +180,14 @@ vtkIdType PolyDataFieldDisplacementMap::InsertCellsFromGenerator(IdBlock *Source
     this->SourceGen->GetCellPointIndexes(polyId,&sourcePtIds[0]);
     this->SourceGen->GetCellPoints(polyId,&sourcePts[0]);
 
-    // Get location to write new cell.
-    vtkIdType *pOutCells=outCells->WritePointer(insertLoc,nSourcePtIds+1);
-    // update next cell write location.
-    insertLoc+=nSourcePtIds+1;
-    // number of points in this cell
-    *pOutCells=nSourcePtIds;
-    ++pOutCells;
+    this->OutCells->InsertNextCell(nSourcePtIds);
 
     // Get location to write new point. assumes we need to copy all
     // but this is wrong as there will be many duplicates. ignored.
     float *pOutPts=this->OutPts->WritePointer(3*nOutPts,3*nSourcePtIds);
 
     // transfer from input to output (only what we own)
-    for (vtkIdType j=0; j<nSourcePtIds; ++j,++pOutCells)
+    for (vtkIdType j=0; j<nSourcePtIds; ++j)
       {
       vtkIdType idx=3*j;
       // do we already have this point?
@@ -214,7 +202,7 @@ vtkIdType PolyDataFieldDisplacementMap::InsertCellsFromGenerator(IdBlock *Source
         pOutPts[2]=sourcePts[idx+2];
 
         // insert the new point id.
-        *pOutCells=nOutPts;
+        this->OutCells->InsertCellPoint(nOutPts);
 
         // compute a field line from this point
         FieldLine *line=new FieldLine(pOutPts,nOutPts);
@@ -228,7 +216,7 @@ vtkIdType PolyDataFieldDisplacementMap::InsertCellsFromGenerator(IdBlock *Source
         {
         // this point has been coppied, do not add a duplicate.
         // insert the other point id.
-        *pOutCells=(*ret.first).second;
+        this->OutCells->InsertCellPoint((*ret.first).second);
         }
       }
 
@@ -258,13 +246,7 @@ vtkIdType PolyDataFieldDisplacementMap::InsertCellsFromDataset(IdBlock *SourceId
     this->SourceCells->GetNextCell(n,ptIds);
     }
 
-  // update the cell count before we forget (does not allocate).
-  this->OutCells->SetNumberOfCells(OutCells->GetNumberOfCells()+nCellsLocal);
-
   float *pSourcePts=this->SourcePts->GetPointer(0);
-
-  vtkIdTypeArray *outCells=this->OutCells->GetData();
-  vtkIdType insertLoc=outCells->GetNumberOfTuples();
 
   vtkIdType nOutPts=this->OutPts->GetNumberOfTuples();
 
@@ -278,20 +260,14 @@ vtkIdType PolyDataFieldDisplacementMap::InsertCellsFromDataset(IdBlock *SourceId
     vtkIdType *ptIds=0;
     this->SourceCells->GetNextCell(nPtIds,ptIds);
 
-    // Get location to write new cell.
-    vtkIdType *pOutCells=outCells->WritePointer(insertLoc,nPtIds+1);
-    // update next cell write location.
-    insertLoc+=nPtIds+1;
-    // number of points in this cell
-    *pOutCells=nPtIds;
-    ++pOutCells;
+    this->OutCells->InsertNextCell(nPtIds);
 
     // Get location to write new point. assumes we need to copy all
     // but this is wrong as there will be many duplicates. ignored.
     float *pOutPts=this->OutPts->WritePointer(3*nOutPts,3*nPtIds);
 
     // transfer from input to output (only what we own)
-    for (vtkIdType j=0; j<nPtIds; ++j,++pOutCells)
+    for (vtkIdType j=0; j<nPtIds; ++j)
       {
       vtkIdType idx=3*ptIds[j];
       // do we already have this point?
@@ -306,7 +282,7 @@ vtkIdType PolyDataFieldDisplacementMap::InsertCellsFromDataset(IdBlock *SourceId
         pOutPts[2]=pSourcePts[idx+2];
 
         // insert the new point id.
-        *pOutCells=nOutPts;
+        this->OutCells->InsertCellPoint(nOutPts);
 
         // compute a field line form this point
         FieldLine *line=new FieldLine(pOutPts,nOutPts);
@@ -320,7 +296,7 @@ vtkIdType PolyDataFieldDisplacementMap::InsertCellsFromDataset(IdBlock *SourceId
         {
         // this point has been coppied, do not add a duplicate.
         // insert the other point id.
-        *pOutCells=(*ret.first).second;
+        this->OutCells->InsertCellPoint((*ret.first).second);
         }
       }
     }

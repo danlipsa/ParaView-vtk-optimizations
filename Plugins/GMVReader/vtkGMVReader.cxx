@@ -725,9 +725,7 @@ int vtkGMVReader::RequestData(vtkInformation *vtkNotUsed(request),
                     {
                     pointIds[k] = *auxIt;
                     }
-                  ugrid->InsertNextCell(VTK_POLYHEDRON,
-                                        numPts, pointIds,
-                                        faces->GetNumberOfCells(), faces->GetPointer());
+                  ugrid->InsertNextCell(numPts, pointIds, faces);
                   delete [] pointIds;
                   pointIds = NULL;
                   faces->Delete();

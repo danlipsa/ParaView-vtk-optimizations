@@ -33,8 +33,7 @@ public:
     SourceTypes(0),
     OutPts(0),
     OutCells(0),
-    OutTypes(0),
-    OutLocs(0)
+    OutTypes(0)
       {  }
 
   virtual ~UnstructuredGridCellCopier();
@@ -71,7 +70,6 @@ private:
   vtkFloatArray *OutPts;
   vtkCellArray *OutCells;
   vtkUnsignedCharArray *OutTypes;
-  vtkIdTypeArray *OutLocs;
 };
 
 #endif

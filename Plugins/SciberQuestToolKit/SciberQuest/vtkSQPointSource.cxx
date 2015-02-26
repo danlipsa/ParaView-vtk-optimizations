@@ -93,9 +93,8 @@ int vtkSQPointSource::RequestData(
   pa->SetNumberOfTuples(nLocal);
   float *ppa=pa->GetPointer(0);
 
-  vtkIdTypeArray *ca=vtkIdTypeArray::New();
-  ca->SetNumberOfTuples(2*nLocal);
-  vtkIdType *pca=ca->GetPointer(0);
+  vtkCellArray *cells=vtkCellArray::New();
+  cells->Reserve(nLocal, 1);
 
   srand((unsigned int)pieceNo+(unsigned int)time(0));
 
@@ -113,16 +112,10 @@ int vtkSQPointSource::RequestData(
     ppa[2]=((float)this->Center[2])+rho*(float)cos(phi);
     ppa+=3;
 
-    pca[0]=1;
-    pca[1]=i;
-    pca+=2;
+    cells->InsertNextCell(1);
+    cells->InsertCellPoint(i);
     }
-
-  vtkCellArray *cells=vtkCellArray::New();
-  cells->SetCells(nLocal,ca);
-  ca->Delete();
   output->SetVerts(cells);
-  cells->Delete();
 
   vtkPoints *points=vtkPoints::New();
   points->SetData(pa);
